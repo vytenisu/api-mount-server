@@ -1,0 +1,47 @@
+{
+  "name": "api-mount-server",
+  "version": "0.0.0",
+  "description": "Library for making communication between front-end and back-end simple",
+  "main": "dist/node.js",
+  "browser": "./dist/browser.js",
+  "scripts": {},
+  "homepage": "https://github.com/vytenisu/api-mount-server",
+  "bugs": {
+    "url": "https://github.com/vytenisu/api-mount-server/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vytenisu/api-mount-server.git"
+  },
+  "keywords": [
+    "fetch",
+    "api",
+    "server",
+    "back-end",
+    "back",
+    "auto",
+    "automatic",
+    "direct",
+    "api-link",
+    "back-end",
+    "front-end",
+    "server",
+    "client",
+    "proxy",
+    "easy",
+    "simple",
+    "ts",
+    "TypeScript",
+    "generator",
+    "vytenis",
+    "urbonavicius",
+    "vytenisu",
+    "WhiteTurbine",
+    "Whitend"
+  ],
+  "author": {
+    "name": "Vytenis Urbonavičius",
+    "url": "https://github.com/vytenisu"
+  },
+  "license": "MIT"
+}
