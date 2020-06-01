@@ -4,7 +4,15 @@
   "description": "Library for making communication between front-end and back-end simple",
   "main": "dist/index.js",
   "browser": "./dist/browser.js",
-  "scripts": {},
+  "scripts": {
+    "prepublishOnly": "npm run lint && npm run build && npm run test && npm run docs",
+    "test": "./node_modules/.bin/jest --forceExit --detectOpenHandles",
+    "testSync": "./node_modules/.bin/jest --runInBand --forceExit --detectOpenHandles",
+    "lint": "./node_modules/.bin/tslint -c ./tslint.json -p ./tsconfig.json -t stylish ./lib/**/*.ts",
+    "build": "./node_modules/.bin/webpack",
+    "buildDev": "./node_modules/.bin/webpack --config webpack.config.dev.js",
+    "docs": "./node_modules/.bin/typedoc --module commonjs --target ES6 --exclude **/*.test.* --ignoreCompilerErrors --out ./docs --readme ./README.md --mode file ./index.ts ./lib"
+  },
   "homepage": "https://github.com/vytenisu/api-mount-server",
   "bugs": {
     "url": "https://github.com/vytenisu/api-mount-server/issues"
@@ -69,6 +77,7 @@
     "webpack-node-externals": "^1.7.2"
   },
   "dependencies": {
+    "body-parser": "^1.19.0",
     "param-case": "^3.0.3"
   }
 }
