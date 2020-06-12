@@ -1,17 +1,24 @@
 import express from 'express'
-import {Express} from 'express'
+import bodyParser from 'body-parser'
+import {Express, Request, Response} from 'express'
 import {paramCase} from 'param-case'
-
-/**
- * Default express app name
- * In theory there can be multiple but this is rarely needed
- */
-export const DEFAULT_NAME = 'default'
 
 /**
  * Default server port
  */
 export const DEFAULT_PORT = 3000
+
+/**
+ * Default express app name prefix
+ * If multiple apps are launched on different ports, by default this prefix will be used
+ */
+export const DEFAULT_NAME_PREFIX = 'default_'
+
+/**
+ * Default express app name
+ * In theory there can be multiple but this is rarely needed
+ */
+export const DEFAULT_NAME = `${DEFAULT_NAME_PREFIX}${DEFAULT_PORT.toString()}`
 
 /**
  * API method
@@ -21,21 +28,21 @@ export type IApiMountApiHandler = (...args: any[]) => Promise<any> | any
 /**
  * Collection of API methods
  */
-export interface IApiMountApi {
-  [name: string]: IApiMountApiHandler
-}
+export type IApiMountApi = object
 
 /**
  * Hook to inject code before API execution
  * @param method name of called method
  * @param implementation implementation of called method
  * @param context context of this for called method implementation
- * @returns true if default code needs to be executed afterwards
+ * @returns false prevents further default execution of request handler
  */
 export type IApiMountBeforeExecution = (
   method: string,
   implementation: IApiMountApiHandler,
   context: IApiMountApi,
+  req: Request,
+  res: Response,
 ) => boolean
 
 /**
@@ -43,12 +50,15 @@ export type IApiMountBeforeExecution = (
  * @param response API method response after execution
  * @param error true if API method exited with an error
  * @param method name of method which has been called
+ * @returns false prevents automatic response from request handler
  */
 export type IApiMountBeforeResponse = (
   response: any,
   error: boolean,
   method: string,
-) => void
+  req: Request,
+  res: Response,
+) => boolean
 
 /**
  * Hook to inject logic after server responds
@@ -120,27 +130,8 @@ const app: IApiMountAppCache = {}
 const launch: IApiMountAppLaunchCache = {
   [DEFAULT_NAME]: (config: IApiMountConfig) => {
     const newApp = express()
-    // newApp.configure(() => {
-    //   newApp.use(express.json())
-    // })
-    //
-    // const express = require("express");
-    // const bodyParser = require("body-parser");
-    // const router = express.Router();
-    // const app = express();
-
-    // //Here we are configuring express to use body-parser as middle-ware.
-    // app.use(bodyParser.urlencoded({ extended: false }));
-    // app.use(bodyParser.json());
-
-    // router.post('handle',(request,response) => {
-    //     //code to perform particular action.
-    //     //To access POST variable use req.body()methods.
-    //     console.log(request.body);
-    // });
-
-    // // add router in the Express app.
-    // app.use("/", router);
+    newApp.use(bodyParser.urlencoded({extended: false}))
+    newApp.use(bodyParser.json())
     newApp.listen(config.port)
     return newApp
   },
@@ -148,7 +139,9 @@ const launch: IApiMountAppLaunchCache = {
 
 const performLaunch = (config: IApiMountConfig) => {
   if (!launched[config.name]) {
-    app[config.name] = launch[config.name](config)
+    app[config.name] = launch[config.name]
+      ? launch[config.name](config)
+      : launch[DEFAULT_NAME](config)
     launched[config.name] = true
   }
 }
@@ -170,12 +163,15 @@ export const injectLaunchCode = (
  * @param sharedConfig default configuration for exposed APIs
  * @returns object which is capable of exposing APIs
  */
-export const apiFactory = (sharedConfig: IApiMountConfig = {}) => {
+export const apiMountFactory = (sharedConfig: IApiMountConfig = {}) => {
   sharedConfig = {
-    name: DEFAULT_NAME,
     port: DEFAULT_PORT,
     basePath: '',
     ...sharedConfig,
+  }
+
+  if (!sharedConfig.name) {
+    sharedConfig.name = DEFAULT_NAME_PREFIX + sharedConfig.port.toString()
   }
 
   return {
@@ -193,7 +189,7 @@ export const apiFactory = (sharedConfig: IApiMountConfig = {}) => {
         ...config,
       }
 
-      const className = obj.constructor.name || this.name
+      const className = (obj as any).name || obj.constructor.name
 
       if (className) {
         const namespace = paramCase(className)
@@ -220,10 +216,19 @@ export const apiFactory = (sharedConfig: IApiMountConfig = {}) => {
 
       const {name, basePath} = config
 
-      Object.entries(api).forEach(([method, implementation]) => {
+      const entries = []
+
+      for (let method in api) {
+        entries.push([method, (api as any)[method]])
+      }
+
+      entries.forEach(([method, implementation]) => {
         app[name].post(`${basePath}/${paramCase(method)}`, (req, res) => {
           if (
-            !(config.beforeExecution?.(method, implementation, api) ?? true)
+            !(
+              config.beforeExecution?.(method, implementation, api, req, res) ??
+              true
+            )
           ) {
             return
           }
@@ -231,25 +236,22 @@ export const apiFactory = (sharedConfig: IApiMountConfig = {}) => {
           let lastResponse: any
           let error = false
 
-          console.log({method, body: req.body})
-
           const callImplementation = async () =>
             await implementation.apply(api, req.body?.args || {args: []})
 
           callImplementation()
             .then((response: any) => {
-              if (config.beforeResponse) {
-                config.beforeResponse(response, false, method)
-              } else {
+              if (
+                config.beforeResponse?.(response, false, method, req, res) ??
+                true
+              ) {
                 res.json(response)
               }
 
               lastResponse = response
             })
             .catch((e: any) => {
-              if (config.beforeResponse) {
-                config.beforeResponse(e, true, method)
-              } else {
+              if (config.beforeResponse?.(e, true, method, req, res) ?? true) {
                 res.status(500)
 
                 if (e instanceof Error) {
