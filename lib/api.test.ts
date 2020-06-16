@@ -287,27 +287,166 @@ describe('API Hook Server', () => {
     expect(status).toBe(201)
   })
 
-  it('allows using beforeResponse hook without overriding behavior', () => {
-    // TODO: Not finished
+  it('allows using beforeResponse hook without overriding behavior', async () => {
+    let args
+
+    const ApiMount = apiMountFactory({
+      beforeResponse: (response, error, method, req, res) => {
+        args = [response, error, method]
+        return true
+      },
+    })
+
+    const method = 'anotherMethod'
+    const implementation = () => 888
+    const context = {} as any
+    context[method] = implementation
+
+    ApiMount.exposeApi(context)
+
+    const {data, status} = await request('/another-method')
+
+    expect(data).toBe(888)
+    expect(status).toBe(200)
+    expect(args).toEqual([888, false, method])
   })
 
-  it('allows using beforeResponse hook with overriding behavior', () => {
-    // TODO: Not finished
+  it('allows using beforeResponse hook with overriding behavior', async () => {
+    const ApiMount = apiMountFactory({
+      beforeResponse: (response, error, method, req, res) => {
+        res.status(200)
+        res.json(response + 1)
+        return false
+      },
+    })
+
+    const api = {
+      addOneMagic(n: number) {
+        return n
+      },
+    }
+
+    ApiMount.exposeApi(api)
+
+    const {data, status} = await request('/add-one-magic', [1])
+
+    expect(data).toBe(2)
+    expect(status).toBe(200)
   })
 
-  it('provides error to beforeResponse hook', () => {
-    // TODO: Not finished
+  it('provides error to beforeResponse hook', async () => {
+    let args
+
+    const ApiMount = apiMountFactory({
+      beforeResponse: (response, error, method, req, res) => {
+        args = [response, error, method]
+        return true
+      },
+    })
+
+    const api = {
+      returnError() {
+        throw 'error'
+      },
+    }
+
+    ApiMount.exposeApi(api)
+
+    const {data, status} = await request('/return-error')
+
+    expect(data).toBe('error')
+    expect(status).toBe(500)
+    expect(args).toEqual(['error', true, 'returnError'])
   })
 
-  it('allows using afterResponse hook', () => {
-    // TODO: Not finished
+  it('allows using afterResponse hook', async () => {
+    let args
+
+    const ApiMount = apiMountFactory({
+      afterResponse: (response, error, method) => {
+        args = [response, error, method]
+      },
+    })
+
+    const api = {
+      returnSomething() {
+        return 'ok'
+      },
+    }
+
+    ApiMount.exposeApi(api)
+    await request('/return-something')
+
+    expect(args).toEqual(['ok', false, 'returnSomething'])
   })
 
-  it('provides error to afterResponse hook', () => {
-    // TODO: Not finished
+  it('provides error to afterResponse hook', async () => {
+    let args
+
+    const ApiMount = apiMountFactory({
+      afterResponse: (response, error, method) => {
+        args = [response, error, method]
+        return true
+      },
+    })
+
+    const api = {
+      returnSomeProblem() {
+        throw 'someProblem'
+      },
+    }
+
+    ApiMount.exposeApi(api)
+    await request('/return-some-problem')
+
+    expect(args).toEqual(['someProblem', true, 'returnSomeProblem'])
   })
 
-  it('allows overriding shared configuration when exposing API', () => {
-    // TODO: Not finished
+  it('allows overriding shared configuration when exposing API', async () => {
+    const shared = {
+      afterResponse: jest.fn(),
+      beforeExecution: jest.fn(() => true),
+      beforeResponse: jest.fn(() => true),
+    }
+
+    const overridden = {
+      afterResponse: jest.fn(),
+      beforeExecution: jest.fn(() => true),
+      beforeResponse: jest.fn(() => true),
+    }
+
+    const ApiMount = apiMountFactory({
+      afterResponse: shared.afterResponse,
+      basePath: '/shared',
+      beforeExecution: shared.beforeExecution,
+      beforeResponse: shared.beforeResponse,
+      port: 3002,
+    })
+
+    const api = {
+      testOverride() {
+        return 'override'
+      },
+    }
+
+    ApiMount.exposeApi(api, {
+      afterResponse: overridden.afterResponse,
+      basePath: '/overridden',
+      beforeExecution: overridden.beforeExecution,
+      beforeResponse: overridden.beforeResponse,
+    })
+
+    await request('/overridden/test-override', [], {port: 3002})
+
+    Object.values(shared).forEach(sharedMethod => {
+      expect(sharedMethod).not.toHaveBeenCalled()
+    })
+
+    Object.values(overridden).forEach(overriddenMethod => {
+      expect(overriddenMethod).toHaveBeenCalledTimes(1)
+    })
   })
+
+  // TODO: Test injectLaunchCode
+  // TODO: Test names
 })

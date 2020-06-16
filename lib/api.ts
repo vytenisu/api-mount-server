@@ -73,18 +73,13 @@ export type IApiMountAfterResponse = (
 ) => void
 
 /**
- * Main API Mount configuration
+ * API Mount Configuration
  */
 export interface IApiMountConfig {
   /**
    * Express APP name - only needed in corner case when there are several
    */
   name?: string
-
-  /**
-   * Server port number
-   */
-  port?: number
 
   /**
    * Base path for end-points
@@ -108,9 +103,19 @@ export interface IApiMountConfig {
 }
 
 /**
+ * Shared API Mount Configuration
+ */
+export interface ISharedApiMountConfig extends IApiMountConfig {
+  /**
+   * Server port number
+   */
+  port?: number
+}
+
+/**
  * Method which is responsible for initializing and launching Express server
  */
-export type IApiMountLauncher = (config: IApiMountConfig) => Express
+export type IApiMountLauncher = (config: ISharedApiMountConfig) => Express
 
 interface IApiMountLaunchCache {
   [hash: string]: boolean
@@ -128,7 +133,7 @@ const launched: IApiMountLaunchCache = {}
 const app: IApiMountAppCache = {}
 
 const launch: IApiMountAppLaunchCache = {
-  [DEFAULT_NAME]: (config: IApiMountConfig) => {
+  [DEFAULT_NAME]: (config: ISharedApiMountConfig) => {
     const newApp = express()
     newApp.use(bodyParser.urlencoded({extended: false}))
     newApp.use(bodyParser.json())
@@ -137,7 +142,7 @@ const launch: IApiMountAppLaunchCache = {
   },
 }
 
-const performLaunch = (config: IApiMountConfig) => {
+const performLaunch = (config: ISharedApiMountConfig) => {
   if (!launched[config.name]) {
     app[config.name] = launch[config.name]
       ? launch[config.name](config)
@@ -163,7 +168,7 @@ export const injectLaunchCode = (
  * @param sharedConfig default configuration for exposed APIs
  * @returns object which is capable of exposing APIs
  */
-export const apiMountFactory = (sharedConfig: IApiMountConfig = {}) => {
+export const apiMountFactory = (sharedConfig: ISharedApiMountConfig = {}) => {
   sharedConfig = {
     port: DEFAULT_PORT,
     basePath: '',
@@ -239,6 +244,10 @@ export const apiMountFactory = (sharedConfig: IApiMountConfig = {}) => {
           const callImplementation = async () =>
             await implementation.apply(api, req.body?.args || {args: []})
 
+          const executeAfterResponse = () => {
+            config.afterResponse?.(lastResponse, error, method)
+          }
+
           callImplementation()
             .then((response: any) => {
               if (
@@ -249,6 +258,7 @@ export const apiMountFactory = (sharedConfig: IApiMountConfig = {}) => {
               }
 
               lastResponse = response
+              executeAfterResponse()
             })
             .catch((e: any) => {
               if (config.beforeResponse?.(e, true, method, req, res) ?? true) {
@@ -263,9 +273,8 @@ export const apiMountFactory = (sharedConfig: IApiMountConfig = {}) => {
 
               lastResponse = e
               error = true
+              executeAfterResponse()
             })
-
-          config.afterResponse?.(lastResponse, error, method)
         })
       })
     },
