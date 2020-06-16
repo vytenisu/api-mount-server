@@ -1,5 +1,7 @@
-import {apiMountFactory} from './api'
+import {apiMountFactory, injectLaunchCode} from './api'
 import fetch from 'node-fetch'
+import express from 'express'
+import bodyParser from 'body-parser'
 
 interface IRequestOptions {
   port?: number
@@ -106,6 +108,7 @@ describe('API Hook Server', () => {
   it('exposes static class API', async () => {
     const ApiMount = apiMountFactory()
 
+    // tslint:disable-next-line:max-classes-per-file
     class StaticClass {
       public static test() {
         return 333
@@ -138,12 +141,14 @@ describe('API Hook Server', () => {
   it('allows exposing multiple APIs', async () => {
     const ApiMount = apiMountFactory()
 
+    // tslint:disable-next-line:max-classes-per-file
     class StaticA {
       static testA() {
         return 'a'
       }
     }
 
+    // tslint:disable-next-line:max-classes-per-file
     class StaticB {
       static testB() {
         return 'b'
@@ -244,8 +249,8 @@ describe('API Hook Server', () => {
     let args
 
     const ApiMount = apiMountFactory({
-      beforeExecution: (method, implementation, context) => {
-        args = [method, implementation, context]
+      beforeExecution: (someMethod, someImplementation, someContext) => {
+        args = [someMethod, someImplementation, someContext]
         return true
       },
     })
@@ -291,8 +296,8 @@ describe('API Hook Server', () => {
     let args
 
     const ApiMount = apiMountFactory({
-      beforeResponse: (response, error, method, req, res) => {
-        args = [response, error, method]
+      beforeResponse: (response, error, someMethod, req, res) => {
+        args = [response, error, someMethod]
         return true
       },
     })
@@ -346,7 +351,7 @@ describe('API Hook Server', () => {
 
     const api = {
       returnError() {
-        throw 'error'
+        return Promise.reject('error')
       },
     }
 
@@ -354,7 +359,7 @@ describe('API Hook Server', () => {
 
     const {data, status} = await request('/return-error')
 
-    expect(data).toBe('error')
+    expect(data).toEqual('error')
     expect(status).toBe(500)
     expect(args).toEqual(['error', true, 'returnError'])
   })
@@ -392,14 +397,14 @@ describe('API Hook Server', () => {
 
     const api = {
       returnSomeProblem() {
-        throw 'someProblem'
+        throw new Error('someProblem')
       },
     }
 
     ApiMount.exposeApi(api)
     await request('/return-some-problem')
 
-    expect(args).toEqual(['someProblem', true, 'returnSomeProblem'])
+    expect(args).toEqual([new Error('someProblem'), true, 'returnSomeProblem'])
   })
 
   it('allows overriding shared configuration when exposing API', async () => {
@@ -447,6 +452,63 @@ describe('API Hook Server', () => {
     })
   })
 
-  // TODO: Test injectLaunchCode
-  // TODO: Test names
+  it('allows to initialize multiple custom instances', async () => {
+    injectLaunchCode(() => {
+      const newApp = express()
+      newApp.use(bodyParser.urlencoded({extended: false}))
+      newApp.use(bodyParser.json())
+      newApp.listen(3007)
+      return newApp
+    }, '3007')
+
+    injectLaunchCode(() => {
+      const newApp = express()
+      newApp.use(bodyParser.urlencoded({extended: false}))
+      newApp.use(bodyParser.json())
+      newApp.listen(3008)
+      return newApp
+    }, '3008')
+
+    const api3007 = {
+      test3007() {
+        return 3007
+      },
+    }
+
+    const api3008 = {
+      test3008() {
+        return 3008
+      },
+    }
+
+    const ApiMount3007 = apiMountFactory({
+      port: 3007,
+      name: '3007 bad',
+    })
+
+    const ApiMount3008 = apiMountFactory({
+      port: 3008,
+      name: '3008 bad',
+    })
+
+    ApiMount3007.exposeApi(api3007, {name: '3007'})
+    ApiMount3008.exposeApi(api3008, {name: '3008'})
+
+    const {data: data3007, status: status3007} = await request(
+      '/test3007',
+      [],
+      {port: 3007},
+    )
+
+    const {data: data3008, status: status3008} = await request(
+      '/test3008',
+      [],
+      {port: 3008},
+    )
+
+    expect(data3007).toBe(3007)
+    expect(status3007).toBe(200)
+    expect(data3008).toBe(3008)
+    expect(status3008).toBe(200)
+  })
 })

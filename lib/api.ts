@@ -223,7 +223,8 @@ export const apiMountFactory = (sharedConfig: ISharedApiMountConfig = {}) => {
 
       const entries = []
 
-      for (let method in api) {
+      // tslint:disable-next-line:forin
+      for (const method in api) {
         entries.push([method, (api as any)[method]])
       }
 
