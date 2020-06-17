@@ -1,4 +1,4 @@
-# api-mount
+# api-mount-server
 
 _by Vytenis Urbonavičius_
 
