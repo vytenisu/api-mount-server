@@ -16,9 +16,11 @@ npm install --save api-mount-server
 
 ### Constructing API objects
 
+---
+
 This library allows exposing API objects. These objects can be constructed in multiple ways.
 
-1. Simple object with methods:
+Simple object with methods:
 
 ```typescript
 const api = {
@@ -28,7 +30,7 @@ const api = {
 }
 ```
 
-2. Set of functions collected into an API object:
+Set of functions collected into an API object:
 
 ```typescript
 // api.js
@@ -41,7 +43,7 @@ import * as api from './api'
 // ...
 ```
 
-3. Object created from a class
+Object created from a class
 
 ```typescript
 class SomeClass {
@@ -53,7 +55,7 @@ class SomeClass {
 const api = new SomeClass()
 ```
 
-4. Static class (if supported)
+Static class (if supported)
 
 ```typescript
 class StaticClass {
@@ -66,6 +68,8 @@ class StaticClass {
 There may be more ways but these are just a few examples to showcase the possibilities.
 
 ### Writing API methods
+
+---
 
 API methods are normal methods or functions with one constraint - they can only operate with serializable values (arguments, return value). In this case serializable value is a value which can be converted into _JSON_ using _JSON.stringify()_ method.
 
@@ -101,6 +105,8 @@ API.foo().then(console.log) // 'foo'
 You can find more information about how API can be accessed from client side here: [api-mount-client](http://npmjs.com/package/api-mount-client)
 
 ### Exposing API object
+
+---
 
 ```typescript
 import {apiMountFactory} from 'api-mount-server'
@@ -164,6 +170,8 @@ In this case _foo_ will become accessible via HTTP as:
 ```
 
 ### CORS
+
+---
 
 One common problem when starting to use _api-mount-server_ is that requests are blocked by browser's CORS policy. Depending on client configuration symptoms may be either completely blocked requests or opaque responses (i.e. missing response information).
 
