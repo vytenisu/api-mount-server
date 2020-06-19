@@ -31,6 +31,11 @@ export type IApiMountApiHandler = (...args: any[]) => Promise<any> | any
 export type IApiMountApi = object
 
 /**
+ * Hook for altering Express configuration
+ */
+export type IApiMountBeforeListen = (app: Express) => void
+
+/**
  * Hook to inject code before API execution
  * @param method name of called method
  * @param implementation implementation of called method
@@ -87,6 +92,11 @@ export interface IApiMountConfig {
   basePath?: string
 
   /**
+   * Hook for altering Express configuration
+   */
+  beforeListen?: IApiMountBeforeListen
+
+  /**
    * Hook for injecting logic before execution
    */
   beforeExecution?: IApiMountBeforeExecution
@@ -137,6 +147,7 @@ const launch: IApiMountAppLaunchCache = {
     const newApp = express()
     newApp.use(bodyParser.urlencoded({extended: false}))
     newApp.use(bodyParser.json())
+    config.beforeListen?.(newApp)
     newApp.listen(config.port)
     return newApp
   },

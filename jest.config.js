@@ -8,6 +8,5 @@ module.exports = {
   cacheDirectory: '<rootDir>/cache/jest',
   testRegex: '\\.test\\.ts$',
   moduleFileExtensions: ['js', 'json', 'ts'],
-  // timers: 'fake',
   verbose: false,
 }

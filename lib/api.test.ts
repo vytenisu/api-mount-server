@@ -385,6 +385,21 @@ describe('API Hook Server', () => {
     expect(args).toEqual(['ok', false, 'returnSomething'])
   })
 
+  it('allows using beforeListen hook', () => {
+    let passedApp: any
+
+    const ApiMount = apiMountFactory({
+      beforeListen: app => {
+        passedApp = app
+      },
+      port: 3010,
+    })
+
+    ApiMount.exposeApi({})
+    expect(passedApp?.request).toBeDefined()
+    expect(passedApp?.response).toBeDefined()
+  })
+
   it('provides error to afterResponse hook', async () => {
     let args
 
