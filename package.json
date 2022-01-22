@@ -63,7 +63,7 @@
     "find-node-modules": "^2.0.0",
     "jest": "^25.2.3",
     "license-webpack-plugin": "^2.1.4",
-    "node-fetch": "^2.6.0",
+    "node-fetch": "^3.1.1",
     "npm-dts-webpack-plugin": "^1.2.1",
     "ts-jest": "^25.2.1",
     "ts-loader": "^6.2.2",
